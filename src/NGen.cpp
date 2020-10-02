@@ -130,19 +130,19 @@ int main(int argc, char *argv[]) {
           bool error = false;
 
           if( !utils::FileChecker::file_is_readable(argv[1]) ) {
-            std::cout<<"catchment data path not readable"<<std::endl;
+            std::cout<<"catchment data path "<<argv[1]<<" not readable"<<std::endl;
             error = true;
           }
           else{ catchmentDataFile = argv[1]; }
 
           if( !utils::FileChecker::file_is_readable(argv[3]) ) {
-            std::cout<<"nexus data path not readable"<<std::endl;
+            std::cout<<"nexus data path "<<argv[3]<<" not readable"<<std::endl;
             error = true;
           }
           else { nexusDataFile = argv[3]; }
 
           if( !utils::FileChecker::file_is_readable(argv[5]) ) {
-            std::cout<<"realization config path not readable"<<std::endl;
+            std::cout<<"realization config path "<<argv[5]<<" not readable"<<std::endl;
             error = true;
           }
           else{ REALIZATION_CONFIG_PATH = argv[5]; }
@@ -224,6 +224,7 @@ int main(int argc, char *argv[]) {
         //get the catchment response
         double response = formulation_pair.second->get_response(0, time_step, 3600.0, &pdm_et_data);
         //dump the output
+        std::cout<<"catchment mapped to nexus "<<catchment_to_nexus[formulation_pair.first]<<std::endl;
         std::cout<<"\tCatchment "<<formulation_pair.first<<" contributing "<<response<<" m/s to "<<catchment_to_nexus[formulation_pair.first]<<std::endl;
         catchment_outfiles[formulation_pair.first] << time_step <<", "<<response<<std::endl;
         response = response * boost::geometry::area(nexus_collection->get_feature(formulation_pair.first)->geometry<geojson::multipolygon_t>());
