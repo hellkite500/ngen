@@ -226,6 +226,8 @@ int main(int argc, char *argv[]) {
         //dump the output
         std::cout<<"catchment mapped to nexus "<<catchment_to_nexus[formulation_pair.first]<<std::endl;
         std::cout<<"\tCatchment "<<formulation_pair.first<<" contributing "<<response<<" m/s to "<<catchment_to_nexus[formulation_pair.first]<<std::endl;
+        std::out<<"Attempting to write to file"<<std:endl;
+
         catchment_outfiles[formulation_pair.first] << time_step <<", "<<response<<std::endl;
         response = response * boost::geometry::area(nexus_collection->get_feature(formulation_pair.first)->geometry<geojson::multipolygon_t>());
         std::cout << "\t\tThe modified response is: " << response << std::endl;
