@@ -130,8 +130,8 @@ target_include_directories(partitionGenerator PUBLIC
 
 
     target_link_libraries(partitionGenerator PUBLIC
-       core
-       geojson
+        NGen::core
+        NGen::geojson
         )
     
 if(LSTM_TORCH_LIB_ACTIVE)
