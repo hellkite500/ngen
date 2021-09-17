@@ -14,11 +14,51 @@ module iso_c_bmif_2_0
   use, intrinsic :: iso_c_binding, only: c_ptr, c_loc, c_f_pointer, c_char, c_null_char, c_int, c_double, c_float
   implicit none
 
+
+  ! FRAMEWORK MODULE GLOBALS
+
   type box
     class(bmi), pointer :: ptr => null()
   end type
 
+  !module globals used for tracking dynamic allocations in framework
+  integer, save :: counter = 1
+  integer :: expansion_size = 10
+  integer, save :: pending_cleanup = 0
+  type(box), save, allocatable :: model_instances(:)
+  !use a boolean mask to know which descriptors are in use
+  logical(1), save, allocatable :: used(:)
+  ! END FRAMEWORK MODLUE GLOBALS
+
   contains
+
+  ! function unregister_bmi(descriptor) result(bmi_status)
+  !   use, intrinsic:: iso_c_binding, only: c_int
+  !   implicit none
+  !   integer(kind=c_int), intent(out) :: descriptor
+  !   integer(kind=c_int) :: bmi_status
+  !   integer :: i
+  !   !!!!!!!!!!!
+  !   !! Once again, not thread safe!
+  !   !!!!!!!!!!!
+  !   used(descriptor) = .False.
+  !   pending_cleanup = pending_cleanup + 1
+ 
+  !   if ( pending_cleanup == expansion_size ) then
+  !      do i = 1, size(used)
+  !         if( .not. used(i) ) then
+  !            deallocate( model_instances(counter)%ptr )
+  !         endif
+  !      end do
+  !      model_instances = pack( model_instances, .not. used  )
+  !      used = pack( used, used )
+  !   end if
+    
+  !   !reset counter
+  !   counter = size(used)
+  !   bmi_status = BMI_SUCCESS
+  ! end function unregister_bmi
+
     pure function c_to_f_string(c_string) result(f_string)
       implicit none
       character(kind=c_char, len=1), intent(in) :: c_string(:)
@@ -54,6 +94,18 @@ module iso_c_bmif_2_0
       c_string(n+1) = c_null_char !make sure to add null terminator
     end function f_to_c_string
 
+    subroutine print_info(this) bind(C, name="print_info")
+      type(c_ptr) :: this
+      !use a wrapper for c interop
+      type(box), pointer :: bmi_box
+      print*, "this: ", loc(this)
+      !extract the fortran type from handle
+      call c_f_pointer(this, bmi_box)
+      print*, "BOX: ", loc(bmi_box)
+      print*, "PTR: ", loc(bmi_box%ptr)
+
+    end subroutine print_info
+
     ! Perform startup tasks for the model.
     function initialize(this, config_file) result(bmi_status) bind(C, name="initialize")
       type(c_ptr) :: this
@@ -69,6 +121,33 @@ module iso_c_bmif_2_0
       f_file = c_to_f_string(config_file)
       bmi_status = bmi_box%ptr%initialize(f_file)
     end function initialize
+
+    ! Perform startup tasks for the model.
+    function initialize2(descriptor, config_file) result(bmi_status) bind(C, name="initialize2")
+      integer(kind=c_int), intent(in) :: descriptor
+      character(kind=c_char, len=1), dimension(BMI_MAX_FILE_NAME), intent(in) :: config_file
+      integer(kind=c_int) :: bmi_status
+      character(kind=c_char, len=:), allocatable :: f_file 
+      print*, "ISO_C in descriptor init"
+      print*, "DESC: ", descriptor
+      !convert c style string to fortran character array
+      f_file = c_to_f_string(config_file)
+      print*, size(model_instances)
+      print*, descriptor, loc(model_instances(descriptor)%ptr)
+      if (.not. allocated(model_instances) ) then
+         error stop "model_instances not allocated!"
+      endif
+      if (.not. allocated(used) ) then
+        error stop "used not allocated!"
+     endif
+     if (.not. associated( model_instances(descriptor)%ptr ) ) then
+      error stop "model_instances(descriptor)%ptr not allocated!"
+   endif
+     print*, used(descriptor)
+
+      bmi_status = int(model_instances(descriptor)%ptr%initialize(f_file))
+      !bmi_status = int(model_instances(descriptor)%ptr%test())
+    end function initialize2
 
     ! Advance the model one time step.
     function update(this) result(bmi_status) bind(C, name="update")
@@ -344,6 +423,17 @@ module iso_c_bmif_2_0
       bmi_status = bmi_box%ptr%get_time_units(f_units)
       units(1:len_trim(f_units)+1) = f_to_c_string(f_units)
     end function get_time_units
+
+    ! Time units of the model.
+    function get_time_units2(descriptor, units) result(bmi_status) bind(C, name="get_time_units2")
+      integer(kind=c_int), intent(in) :: descriptor
+      character(kind=c_char, len=1), intent(out) :: units (*)
+      character(kind=c_char, len=BMI_MAX_COMPONENT_NAME) :: f_units
+      integer(kind=c_int) :: bmi_status
+
+      bmi_status = model_instances(descriptor)%ptr%get_time_units(f_units)
+      units(1:len_trim(f_units)+1) = f_to_c_string(f_units)
+    end function get_time_units2
 
     ! Time step of the model.
     function get_time_step(this, time_step) result(bmi_status) bind(C, name="get_time_step")

@@ -943,5 +943,47 @@ end function test_finalize
     bmi_status = BMI_SUCCESS
    endif
  end function register_bmi
+
+ function register_bmi2(descriptor) result(bmi_status) bind(C, name="register_bmi2")
+  use, intrinsic:: iso_c_binding, only: c_int
+  use iso_c_bmif_2_0
+  implicit none
+  integer(kind=c_int), intent(out) :: descriptor
+  integer(kind=c_int) :: bmi_status
+  !locals
+  !tmp array for resizing module global model_instances
+  type(box), allocatable :: tmp(:)
+  
+  !!!!!!!!!!
+  !! Note this is NOT threadsafe!!!
+  !! But it should be fine with multiple processes loading the library
+  !!!!!!!!!!
+
+  !allocate intial desciptor pool
+  if (.not. allocated(model_instances)) then
+     allocate(model_instances(expansion_size))
+     allocate(used(expansion_size))
+     used = .False.
+  end if
+
+  !Check if model_instances should be resized
+  if ( size(model_instances) == counter ) then
+     !Not enough room to allocate the next model, expand
+     allocate( tmp( size(model_instances)+expansion_size ) )
+     tmp(1:size(model_instances)) = model_instances(:)
+     call move_alloc(tmp, model_instances)
+
+  end if
+
+  !Allocate the next model instance
+  allocate(bmi_test_bmi::model_instances(counter)%ptr)
+  !print*, "REGISTER: ", counter, loc(model_instances(counter)%ptr)
+  !mark this descriptor as used
+  used(counter) = .True.
+
+  descriptor = counter
+  counter = counter + 1
+  bmi_status = BMI_SUCCESS
+ end function register_bmi2
 #endif
 end module bmitestbmi
