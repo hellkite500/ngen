@@ -187,7 +187,7 @@ namespace realization {
     private:
 
         /** Index value (0-based) of the time step that will be processed by the next update of the model. */
-        int next_time_step_index = 0;
+        int next_time_step_index = 1;
 
     };
 
