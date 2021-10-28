@@ -528,6 +528,10 @@ static int Initialize (Bmi *self, const char *file)
     model->input_var_2 = malloc(sizeof(double));
     model->output_var_1 = malloc(sizeof(double));
     model->output_var_2 = malloc(sizeof(double));
+    *model->input_var_1 = 0.0;
+    *model->input_var_2 = 0.0;
+    *model->output_var_1 = 0.0;
+    *model->output_var_2 = 0.0;
 
     return BMI_SUCCESS;
 }
