@@ -186,3 +186,87 @@ TEST_F(JSONProperty_Test, ptree_test) {
     ASSERT_EQ(properties[3].get_type(), geojson::PropertyType::Natural);
     ASSERT_EQ(properties[4].get_type(), geojson::PropertyType::Real);
 }
+
+TEST_F(JSONProperty_Test, ptree_test_1) {
+    std::string data = "{ "
+               "\"string_value\": null"
+           "}";
+
+    std::stringstream stream;
+    stream << data;
+    boost::property_tree::ptree tree;
+    boost::property_tree::json_parser::read_json(stream, tree);
+
+    std::vector<geojson::JSONProperty> properties;
+    for(auto &pair : tree) {
+        properties.push_back(geojson::JSONProperty(pair.first, pair.second));
+    }
+
+    ASSERT_EQ(properties.size(), 1);
+    //std::cout<<"WTF: "<<get_propertytype_name(properties[0].get_type())<<"\n";
+    ASSERT_EQ(properties[0].get_type(), geojson::PropertyType::String);
+    ASSERT_EQ(properties[0].as_string(), "null");
+}
+
+TEST_F(JSONProperty_Test, ptree_test_1_a) {
+    std::string data = "{ "
+               "\"string_value\": \"\""
+           "}";
+
+    std::stringstream stream;
+    stream << data;
+    boost::property_tree::ptree tree;
+    boost::property_tree::json_parser::read_json(stream, tree);
+
+    std::vector<geojson::JSONProperty> properties;
+    for(auto &pair : tree) {
+        properties.push_back(geojson::JSONProperty(pair.first, pair.second));
+    }
+
+    ASSERT_EQ(properties.size(), 1);
+    //std::cout<<"WTF: "<<get_propertytype_name(properties[0].get_type())<<"\n";
+    ASSERT_EQ(properties[0].get_type(), geojson::PropertyType::String);
+    ASSERT_EQ(properties[0].as_string(), "null");
+}
+
+TEST_F(JSONProperty_Test, ptree_test_2) {
+    std::string data = "{ "
+               "\"object_value\": {}"
+           "}";
+
+    std::stringstream stream;
+    stream << data;
+    boost::property_tree::ptree tree;
+    boost::property_tree::json_parser::read_json(stream, tree);
+
+    std::vector<geojson::JSONProperty> properties;
+    for(auto &pair : tree) {
+        properties.push_back(geojson::JSONProperty(pair.first, pair.second));
+    }
+
+    ASSERT_EQ(properties.size(), 1);
+    //std::cout<<"WTF: "<<get_propertytype_name(properties[0].get_type())<<"\n";
+    ASSERT_EQ(properties[0].get_type(), geojson::PropertyType::String);
+    ASSERT_EQ(properties[0].as_string(), "null");
+}
+
+TEST_F(JSONProperty_Test, ptree_test_3) {
+    std::string data = "{ "
+               "\"list_value\": []"
+           "}";
+
+    std::stringstream stream;
+    stream << data;
+    boost::property_tree::ptree tree;
+    boost::property_tree::json_parser::read_json(stream, tree);
+
+    std::vector<geojson::JSONProperty> properties;
+    for(auto &pair : tree) {
+        properties.push_back(geojson::JSONProperty(pair.first, pair.second));
+    }
+
+    ASSERT_EQ(properties.size(), 1);
+    //std::cout<<"WTF: "<<get_propertytype_name(properties[0].get_type())<<"\n";
+    ASSERT_EQ(properties[0].get_type(), geojson::PropertyType::String);
+    ASSERT_EQ(properties[0].as_string(), "null");
+}
