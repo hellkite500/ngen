@@ -87,6 +87,13 @@ namespace geojson {
                           }
                         }
                 }
+                else if(property_tree.empty() && property_tree.data().empty())
+                {
+                    //Found empty string, or empty object {}, or empty list []
+                    //map each of these to a string with value `null`
+                    string = "null";
+                    type = PropertyType::String;
+                }
                 else {
                     // This isn't a terminal node, therefore represents an object or array
                     for (auto &property : property_tree) {
