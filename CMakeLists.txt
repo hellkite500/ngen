@@ -115,7 +115,7 @@ endif()
 
 # -----------------------------------------------------------------------------
 # Set global C++ options
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
