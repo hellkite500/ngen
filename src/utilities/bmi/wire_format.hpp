@@ -267,6 +267,23 @@ BMI_SERIALIZATION_PROTOCOL.md.
 
 namespace models{ namespace bmi{ namespace protocols{ namespace serialization{ namespace wire_format{
 
+/** @brief Outcome of a wire-format read operation.
+ *
+ *  `read_record_prefix` returns this directly: `Ok` if a full
+ *  prefix arrived, `Eof` if the stream ended (cleanly or torn)
+ *  before the prefix completed. There is no third "error" state
+ *  at this layer because the wire-format primitive does not
+ *  validate the bytes — magic / wire_version / payload-cap
+ *  checks live at the validation layer in
+ *  `serialization_record.hpp`, which returns
+ *  `expected<Status, std::string>` and reserves the error arm
+ *  for malformed records.
+ *
+ *  Sub-byte primitives (`byte_io::read_*`) still return `bool` —
+ *  they are an implementation detail of the wire format with no
+ *  meaningful three-state distinction. */
+enum class Status { Ok, Eof };
+
 /** @brief Fixed-prefix wire header for a serialization record.
  *
  * The struct is an in-memory mirror of the on-disk header. It is
@@ -344,24 +361,24 @@ inline void write_record_prefix(std::ostream& out, const RecordPrefix& p) {
     byte_io::write_u64_le(out, p.payload_length);
 }
 
-/** @brief Read a `RecordPrefix` from @p in. Returns true on a full
- *  read; false if the stream ended before the prefix completed (EOF
- *  at start, or short read mid-prefix).
+/** @brief Read a `RecordPrefix` from @p in. Returns `Status::Ok`
+ *  on a full read; `Status::Eof` if the stream ended before the
+ *  prefix completed (EOF at start, or short read mid-prefix).
  *
  *  Magic and wire-version validation are the caller's responsibility
  *  — this function reports only "did a full prefix arrive." A reader
  *  that needs to distinguish "torn file at the prefix boundary" from
  *  "this is not a record" inspects `magic` and `wire_version` after
  *  a successful read. */
-inline bool read_record_prefix(std::istream& in, RecordPrefix& p) {
-    if (!byte_io::read_u32_le(in, p.magic))                return false;
-    if (!byte_io::read_u8    (in, p.wire_version))         return false;
-    if (!byte_io::read_i64_le(in, p.time_step))            return false;
-    if (!byte_io::read_i64_le(in, p.simulation_timestamp)) return false;
-    if (!byte_io::read_i64_le(in, p.checkpoint_epoch))     return false;
-    if (!byte_io::read_u16_le(in, p.id_length))            return false;
-    if (!byte_io::read_u64_le(in, p.payload_length))       return false;
-    return true;
+inline Status read_record_prefix(std::istream& in, RecordPrefix& p) {
+    if (!byte_io::read_u32_le(in, p.magic))                return Status::Eof;
+    if (!byte_io::read_u8    (in, p.wire_version))         return Status::Eof;
+    if (!byte_io::read_i64_le(in, p.time_step))            return Status::Eof;
+    if (!byte_io::read_i64_le(in, p.simulation_timestamp)) return Status::Eof;
+    if (!byte_io::read_i64_le(in, p.checkpoint_epoch))     return Status::Eof;
+    if (!byte_io::read_u16_le(in, p.id_length))            return Status::Eof;
+    if (!byte_io::read_u64_le(in, p.payload_length))       return Status::Eof;
+    return Status::Ok;
 }
 
 }}}}}  // namespace models::bmi::protocols::serialization::wire_format
