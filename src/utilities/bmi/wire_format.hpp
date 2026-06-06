@@ -260,6 +260,7 @@ BMI_SERIALIZATION_PROTOCOL.md.
 
 #include "byte_io.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <istream>
@@ -347,26 +348,75 @@ struct RecordPrefix {
     uint64_t payload_length      = 0;
 };
 
-/** @brief Write a `RecordPrefix` to @p out using field-by-field
- *  little-endian encoding. Exactly `PREFIX_BYTES` bytes are emitted.
+/** @brief Encode a `RecordPrefix` into the @p out buffer using
+ *  field-by-field little-endian encoding. The buffer MUST be at
+ *  least `RecordPrefix::PREFIX_BYTES` bytes long; exactly
+ *  `PREFIX_BYTES` bytes are written.
+ *
+ *  This is the **source of truth** for the on-disk prefix layout.
+ *  Stream and direct-fd writers both go through it, so the encoded
+ *  bytes are byte-identical regardless of how the caller delivers
+ *  them to the underlying medium.
+ */
+inline void encode_record_prefix(std::uint8_t* out, const RecordPrefix& p) {
+    // byte encode each field, advancing the pointer as we go.
+    byte_io::encode_u32_le(out, p.magic);
+    out += sizeof(p.magic);
+    byte_io::encode_u8(out, p.wire_version);
+    out += sizeof(p.wire_version);
+    byte_io::encode_i64_le(out, p.time_step);
+    out += sizeof(p.time_step);
+    byte_io::encode_i64_le(out, p.simulation_timestamp);
+    out += sizeof(p.simulation_timestamp);
+    byte_io::encode_i64_le(out, p.checkpoint_epoch);
+    out += sizeof(p.checkpoint_epoch);
+    byte_io::encode_u16_le(out, p.id_length);
+    out += sizeof(p.id_length);
+    byte_io::encode_u64_le(out, p.payload_length);
+    out += sizeof(p.payload_length);
+}
+
+/** @brief Decode a `RecordPrefix` from the @p in buffer. The buffer
+ *  MUST be at least `RecordPrefix::PREFIX_BYTES` bytes long.
+ *
+ *  Magic and wire-version validation are the caller's responsibility
+ *  — this function only decodes the fields. */
+inline void decode_record_prefix(const std::uint8_t* in, RecordPrefix& p) {
+    // byte decode each field, advancing the pointer as we go.
+    p.magic = byte_io::decode_u32_le(in);
+    in += sizeof(p.magic);
+    p.wire_version = byte_io::decode_u8(in);
+    in += sizeof(p.wire_version);
+    p.time_step = byte_io::decode_i64_le(in);
+    in += sizeof(p.time_step);
+    p.simulation_timestamp = byte_io::decode_i64_le(in);
+    in += sizeof(p.simulation_timestamp);
+    p.checkpoint_epoch = byte_io::decode_i64_le(in);
+    in += sizeof(p.checkpoint_epoch);
+    p.id_length = byte_io::decode_u16_le(in);
+    in += sizeof(p.id_length);
+    p.payload_length = byte_io::decode_u64_le(in);
+    in += sizeof(p.payload_length);
+}
+
+/** @brief Write a `RecordPrefix` to @p out — thin stream adapter
+ *  around `encode_record_prefix`. Exactly `PREFIX_BYTES` bytes are
+ *  emitted.
  *
  *  The caller is responsible for following the prefix on the stream
  *  with `id_length` bytes of id and `payload_length` bytes of
  *  payload — the prefix carries the lengths but does not carry the
  *  bodies. */
 inline void write_record_prefix(std::ostream& out, const RecordPrefix& p) {
-    byte_io::write_u32_le(out, p.magic);
-    byte_io::write_u8(out, p.wire_version);
-    byte_io::write_i64_le(out, p.time_step);
-    byte_io::write_i64_le(out, p.simulation_timestamp);
-    byte_io::write_i64_le(out, p.checkpoint_epoch);
-    byte_io::write_u16_le(out, p.id_length);
-    byte_io::write_u64_le(out, p.payload_length);
+    std::array<std::uint8_t, RecordPrefix::PREFIX_BYTES> buf;
+    encode_record_prefix(buf.data(), p);
+    out.write(reinterpret_cast<const char*>(buf.data()), buf.size());
 }
 
-/** @brief Read a `RecordPrefix` from @p in. Returns `Status::Ok`
- *  on a full read; `Status::Eof` if the stream ended before the
- *  prefix completed (EOF at start, or short read mid-prefix).
+/** @brief Read a `RecordPrefix` from @p in — thin stream adapter
+ *  around `decode_record_prefix`. Returns `Status::Ok` on a full
+ *  read; `Status::Eof` if the stream ended before the prefix
+ *  completed (EOF at start, or short read mid-prefix).
  *
  *  Magic and wire-version validation are the caller's responsibility
  *  — this function reports only "did a full prefix arrive." A reader
@@ -374,13 +424,12 @@ inline void write_record_prefix(std::ostream& out, const RecordPrefix& p) {
  *  "this is not a record" inspects `magic` and `wire_version` after
  *  a successful read. */
 inline Status read_record_prefix(std::istream& in, RecordPrefix& p) {
-    if (!byte_io::read_u32_le(in, p.magic)) return Status::Eof;
-    if (!byte_io::read_u8(in, p.wire_version)) return Status::Eof;
-    if (!byte_io::read_i64_le(in, p.time_step)) return Status::Eof;
-    if (!byte_io::read_i64_le(in, p.simulation_timestamp)) return Status::Eof;
-    if (!byte_io::read_i64_le(in, p.checkpoint_epoch)) return Status::Eof;
-    if (!byte_io::read_u16_le(in, p.id_length)) return Status::Eof;
-    if (!byte_io::read_u64_le(in, p.payload_length)) return Status::Eof;
+    std::array<std::uint8_t, RecordPrefix::PREFIX_BYTES> buf;
+    if (!in.read(reinterpret_cast<char*>(buf.data()), static_cast<std::streamsize>(buf.size()))) {
+        return Status::Eof;
+    }
+    if (static_cast<std::size_t>(in.gcount()) != buf.size()) return Status::Eof;
+    decode_record_prefix(buf.data(), p);
     return Status::Ok;
 }
 
