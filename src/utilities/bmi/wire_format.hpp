@@ -265,7 +265,11 @@ BMI_SERIALIZATION_PROTOCOL.md.
 #include <istream>
 #include <ostream>
 
-namespace models{ namespace bmi{ namespace protocols{ namespace serialization{ namespace wire_format{
+namespace models {
+namespace bmi {
+namespace protocols {
+namespace serialization {
+namespace wire_format {
 
 /** @brief Outcome of a wire-format read operation.
  *
@@ -326,22 +330,21 @@ struct RecordPrefix {
      *  than inlining its current value — a future wire_version bump
      *  may grow the prefix, and consumers that hard-code the size
      *  will silently misalign. */
-    static constexpr std::size_t PREFIX_BYTES =
-        sizeof(uint32_t)    // magic
-      + sizeof(uint8_t)     // wire_version
-      + sizeof(int64_t)     // time_step
-      + sizeof(int64_t)     // simulation_timestamp
-      + sizeof(int64_t)     // checkpoint_epoch
-      + sizeof(uint16_t)    // id_length
-      + sizeof(uint64_t);   // payload_length
+    static constexpr std::size_t PREFIX_BYTES = sizeof(uint32_t) // magic
+                                                + sizeof(uint8_t) // wire_version
+                                                + sizeof(int64_t) // time_step
+                                                + sizeof(int64_t) // simulation_timestamp
+                                                + sizeof(int64_t) // checkpoint_epoch
+                                                + sizeof(uint16_t) // id_length
+                                                + sizeof(uint64_t); // payload_length
 
-    uint32_t magic                = MAGIC;
-    uint8_t  wire_version         = VERSION;
-    int64_t  time_step            = 0;
-    int64_t  simulation_timestamp = 0;
-    int64_t  checkpoint_epoch     = 0;
-    uint16_t id_length            = 0;
-    uint64_t payload_length       = 0;
+    uint32_t magic               = MAGIC;
+    uint8_t wire_version         = VERSION;
+    int64_t time_step            = 0;
+    int64_t simulation_timestamp = 0;
+    int64_t checkpoint_epoch     = 0;
+    uint16_t id_length           = 0;
+    uint64_t payload_length      = 0;
 };
 
 /** @brief Write a `RecordPrefix` to @p out using field-by-field
@@ -353,7 +356,7 @@ struct RecordPrefix {
  *  bodies. */
 inline void write_record_prefix(std::ostream& out, const RecordPrefix& p) {
     byte_io::write_u32_le(out, p.magic);
-    byte_io::write_u8    (out, p.wire_version);
+    byte_io::write_u8(out, p.wire_version);
     byte_io::write_i64_le(out, p.time_step);
     byte_io::write_i64_le(out, p.simulation_timestamp);
     byte_io::write_i64_le(out, p.checkpoint_epoch);
@@ -371,14 +374,18 @@ inline void write_record_prefix(std::ostream& out, const RecordPrefix& p) {
  *  "this is not a record" inspects `magic` and `wire_version` after
  *  a successful read. */
 inline Status read_record_prefix(std::istream& in, RecordPrefix& p) {
-    if (!byte_io::read_u32_le(in, p.magic))                return Status::Eof;
-    if (!byte_io::read_u8    (in, p.wire_version))         return Status::Eof;
-    if (!byte_io::read_i64_le(in, p.time_step))            return Status::Eof;
+    if (!byte_io::read_u32_le(in, p.magic)) return Status::Eof;
+    if (!byte_io::read_u8(in, p.wire_version)) return Status::Eof;
+    if (!byte_io::read_i64_le(in, p.time_step)) return Status::Eof;
     if (!byte_io::read_i64_le(in, p.simulation_timestamp)) return Status::Eof;
-    if (!byte_io::read_i64_le(in, p.checkpoint_epoch))     return Status::Eof;
-    if (!byte_io::read_u16_le(in, p.id_length))            return Status::Eof;
-    if (!byte_io::read_u64_le(in, p.payload_length))       return Status::Eof;
+    if (!byte_io::read_i64_le(in, p.checkpoint_epoch)) return Status::Eof;
+    if (!byte_io::read_u16_le(in, p.id_length)) return Status::Eof;
+    if (!byte_io::read_u64_le(in, p.payload_length)) return Status::Eof;
     return Status::Ok;
 }
 
-}}}}}  // namespace models::bmi::protocols::serialization::wire_format
+} // namespace wire_format
+} // namespace serialization
+} // namespace protocols
+} // namespace bmi
+} // namespace models

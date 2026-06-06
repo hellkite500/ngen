@@ -38,7 +38,11 @@ test target. It is never exported via `target_include_directories(PUBLIC ...)`.
 #include <istream>
 #include <ostream>
 
-namespace models{ namespace bmi{ namespace protocols{ namespace serialization{ namespace byte_io{
+namespace models {
+namespace bmi {
+namespace protocols {
+namespace serialization {
+namespace byte_io {
 
 // Little-endian extraction / reassembly mechanics:
 //
@@ -63,6 +67,15 @@ namespace models{ namespace bmi{ namespace protocols{ namespace serialization{ n
 // — see wire_format.hpp for the assumption's role in the wire
 // format's portability claim and for the run-host canary tests that
 // verify it.
+//
+// The `// clang-format off` / `on` markers in the write_uN_le and
+// read_uN_le bodies below keep one byte (or one OR'd operand) per
+// line. Auto-formatting would happily pack them two-per-line when
+// they fit in the column limit, which loses the at-a-glance
+// vertical verification of the LE pattern — the very property
+// these helpers exist to make obvious. The protection is per-
+// function so the surrounding code (if/return, casts, etc.)
+// formats normally.
 
 inline void write_u8(std::ostream& out, uint8_t v) {
     out.put(static_cast<char>(v));
@@ -76,10 +89,12 @@ inline bool read_u8(std::istream& in, uint8_t& v) {
 }
 
 inline void write_u16_le(std::ostream& out, uint16_t v) {
+    // clang-format off
     const char bytes[2] = {
-        static_cast<char>(v & 0xFF),
-        static_cast<char>((v >> 8) & 0xFF),
+        static_cast<char>( v        & 0xFF),
+        static_cast<char>((v >> 8)  & 0xFF),
     };
+    // clang-format on
     out.write(bytes, 2);
 }
 
@@ -92,18 +107,22 @@ inline bool read_u16_le(std::istream& in, uint16_t& v) {
     // promotes to int because uint16_t is smaller than int, so the
     // shift result is int-typed; the cast narrows it back and
     // suppresses any -Wconversion / -Wnarrowing warning at the OR.
+    // clang-format off
     v = static_cast<uint16_t>(bytes[0])
       | static_cast<uint16_t>(static_cast<uint16_t>(bytes[1]) << 8);
+    // clang-format on
     return true;
 }
 
 inline void write_u32_le(std::ostream& out, uint32_t v) {
+    // clang-format off
     const char bytes[4] = {
-        static_cast<char>(v & 0xFF),
+        static_cast<char>( v        & 0xFF),
         static_cast<char>((v >> 8)  & 0xFF),
         static_cast<char>((v >> 16) & 0xFF),
         static_cast<char>((v >> 24) & 0xFF),
     };
+    // clang-format on
     out.write(bytes, 4);
 }
 
@@ -111,16 +130,19 @@ inline bool read_u32_le(std::istream& in, uint32_t& v) {
     unsigned char bytes[4];
     if (!in.read(reinterpret_cast<char*>(bytes), 4)) return false;
     if (in.gcount() != 4) return false;
+    // clang-format off
     v = static_cast<uint32_t>(bytes[0])
       | (static_cast<uint32_t>(bytes[1]) << 8)
       | (static_cast<uint32_t>(bytes[2]) << 16)
       | (static_cast<uint32_t>(bytes[3]) << 24);
+    // clang-format on
     return true;
 }
 
 inline void write_u64_le(std::ostream& out, uint64_t v) {
+    // clang-format off
     const char bytes[8] = {
-        static_cast<char>(v & 0xFF),
+        static_cast<char>( v        & 0xFF),
         static_cast<char>((v >> 8)  & 0xFF),
         static_cast<char>((v >> 16) & 0xFF),
         static_cast<char>((v >> 24) & 0xFF),
@@ -129,6 +151,7 @@ inline void write_u64_le(std::ostream& out, uint64_t v) {
         static_cast<char>((v >> 48) & 0xFF),
         static_cast<char>((v >> 56) & 0xFF),
     };
+    // clang-format on
     out.write(bytes, 8);
 }
 
@@ -136,6 +159,7 @@ inline bool read_u64_le(std::istream& in, uint64_t& v) {
     unsigned char bytes[8];
     if (!in.read(reinterpret_cast<char*>(bytes), 8)) return false;
     if (in.gcount() != 8) return false;
+    // clang-format off
     v = static_cast<uint64_t>(bytes[0])
       | (static_cast<uint64_t>(bytes[1]) << 8)
       | (static_cast<uint64_t>(bytes[2]) << 16)
@@ -144,6 +168,7 @@ inline bool read_u64_le(std::istream& in, uint64_t& v) {
       | (static_cast<uint64_t>(bytes[5]) << 40)
       | (static_cast<uint64_t>(bytes[6]) << 48)
       | (static_cast<uint64_t>(bytes[7]) << 56);
+    // clang-format on
     return true;
 }
 
@@ -173,4 +198,8 @@ inline bool read_i64_le(std::istream& in, int64_t& v) {
     return true;
 }
 
-}}}}}  // namespace models::bmi::protocols::serialization::byte_io
+} // namespace byte_io
+} // namespace serialization
+} // namespace protocols
+} // namespace bmi
+} // namespace models
